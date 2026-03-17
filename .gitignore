@@ -1,2 +1,4 @@
 /data
 .env
+**/__pylache__
+**/backend/checkpoints
