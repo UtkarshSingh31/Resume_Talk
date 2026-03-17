@@ -30,4 +30,22 @@ Built with **LangGraph**, **Groq**, **Gemini**, **FAISS/RAG**, and **FastAPI**.
 - **API layer** — FastAPI (planned / partial)
 - **Job search** — RapidAPI JSearch endpoint
 
-## Project Structure (current / planned)
+
+## Current Status (March 2026)
+
+✅ Fully working LangGraph workflow with refinement loop + supervisor  
+✅ Checkpointing / resumability (MemorySaver + SqliteSaver)  
+✅ ATS scoring (LLM-based, with parsing robustness fixes)  
+✅ Job fetching (JSearch API)  
+✅ Basic RAG chat over resume (original + refined versions)  
+⚙️ FastAPI backend scaffolding started  
+⏳ Multi-turn conversation memory in RAG  
+⏳ Better intent classification & metadata filtering in retrieval  
+⏳ Frontend (Streamlit / React / whatever) — out of scope for now
+
+## How to Run (notebook mode)
+
+1. Install dependencies
+   ```bash
+   pip install -r requirements.txt
+   # or use poetry / uv / pixi
