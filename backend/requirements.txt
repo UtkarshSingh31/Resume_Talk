@@ -22,3 +22,6 @@ pyprojroot
 pymupdf
 pip-system-certs
 langchain-ollama
+openai
+langchain_groq
+langgraph-checkpoint-sqlite
