@@ -1,4 +1,8 @@
 /data
 .env
-**/__pylache__
+__pycache__
 **/backend/checkpoints
+**/logs
+temp_uploads
+*.pyc
+*.pyo
