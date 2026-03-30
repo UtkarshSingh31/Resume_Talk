@@ -11,7 +11,7 @@ from app.core.config import settings
 
 # Initialize LLMs
 llm_google = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash" if "gemini-1.5-flash" else "gemini-2.5-flash",
+    model="gemini-2.5-flash",
     temperature=0.0,
     api_key=settings.GOOGLE_API_KEY
 )

@@ -18,7 +18,7 @@ def get_checkpointer() -> SqliteSaver:
     
     logger.info("Initializing SQLiteSaver at: %s", db_path)
     
-    conn = sqlite3.connect(str(db_path))
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
     saver = SqliteSaver(conn)
     
     return saver
