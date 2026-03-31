@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAnalysis } from './hooks/useAnalysis';
 import { UploadCloud, CheckCircle, FileText, Briefcase, MessageSquare, AlertCircle } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import './index.css'; // Global custom CSS
 
 function App() {
@@ -258,6 +259,7 @@ function App() {
           </div>
         </main>
       </div>
+      <Analytics />
     </>
   );
 }
