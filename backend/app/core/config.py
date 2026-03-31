@@ -10,7 +10,7 @@ class Settings:
     """Simple config class - no pydantic bloat for basic settings"""
 
     # === Core paths - loaded from .env ===
-    BASE_DIR: Path = Path(os.getenv("BASE_ROOT"))
+    BASE_DIR: Path = Path(os.getenv("BASE_ROOT", str(Path.cwd())))
     DATA_DIR: Path = BASE_DIR / "data"
     CHECKPOINTS_DIR: Path = BASE_DIR / "backend" / "checkpoints"
     TEMP_UPLOAD_DIR: Path = BASE_DIR / "temp_uploads"
