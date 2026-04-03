@@ -24,7 +24,7 @@ export function useAnalysis() {
 
     try {
       // 1. Submit file and job params
-      const res = await fetch('http://localhost:8000/api/v1/analyze', {
+      const res = await fetch('https://utkarshsingh0013-resume_talk.hf.space/api/v1/analyze', {
         method: 'POST',
         body: formData
       });
@@ -47,7 +47,7 @@ export function useAnalysis() {
       eventSourceRef.current.close();
     }
     
-    const eventSource = new EventSource(`http://localhost:8000/api/v1/stream/${currentId}`);
+    const eventSource = new EventSource(`https://utkarshsingh0013-resume_talk.hf.space/api/v1/stream/${currentId}`);
     eventSourceRef.current = eventSource;
     
     eventSource.onmessage = (e) => {
