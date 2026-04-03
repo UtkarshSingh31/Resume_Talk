@@ -3,16 +3,33 @@ from typing import Optional
 from dotenv import load_dotenv
 import os
 
-load_dotenv() 
+load_dotenv()
+
+def get_base_dir() -> Path:
+    """Intelligently find the project root, whether running locally or from backend dir"""
+    if base_root := os.getenv("BASE_ROOT"):
+        return Path(base_root)
+    
+    # Start from this config file location
+    current = Path(__file__).resolve().parent  # backend/app/core
+    
+    # Traverse up to find project root (contains pyproject.toml or .git)
+    for _ in range(5):  # Go up max 5 levels
+        if (current / "pyproject.toml").exists() or (current / ".git").exists():
+            return current
+        current = current.parent
+    
+    # Fallback: assume we're in backend dir, go up one level
+    return Path.cwd().parent if "backend" in str(Path.cwd()) else Path.cwd()
 
 
 class Settings:
     """Simple config class - no pydantic bloat for basic settings"""
 
     # === Core paths - loaded from .env ===
-    BASE_DIR: Path = Path(os.getenv("BASE_ROOT", str(Path.cwd())))
+    BASE_DIR: Path = get_base_dir()
     DATA_DIR: Path = BASE_DIR / "data"
-    CHECKPOINTS_DIR: Path = BASE_DIR / "backend" / "checkpoints"
+    CHECKPOINTS_DIR: Path = BASE_DIR / "checkpoints"
     TEMP_UPLOAD_DIR: Path = BASE_DIR / "temp_uploads"
 
     # === API Keys ===
@@ -31,8 +48,8 @@ class Settings:
 
     def __init__(self):
         """Basic validation on init"""
-        if not self.BASE_DIR.exists():
-            raise ValueError(f"BASE_DIR does not exist: {self.BASE_DIR}")
+        # Create base dir if it doesn't exist (especially for Render)
+        self.BASE_DIR.mkdir(parents=True, exist_ok=True)
 
         # Create important dirs if missing
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,8 +67,7 @@ class Settings:
 # Global instance - import and use this everywhere
 settings = Settings()
 
-print(f'path:- {settings.DATA_DIR} ,{type(settings.DATA_DIR)}')
-# Optional: quick debug print when module is imported (remove later)
+# Debug prints (only in DEBUG mode)
 if settings.DEBUG:
     print(f"[CONFIG] Loaded from: {settings.BASE_DIR}")
     print(f"[CONFIG] Checkpointer DB: {settings.get_checkpointer_path()}")
