@@ -47,7 +47,7 @@ function App() {
     setChatInput('');
 
     try {
-      const res = await fetch('https://utkarshsingh0013-resume_talk.hf.space/api/v1/chat', {
+      const res = await fetch('https://utkarshsingh0013-resume-talk.hf.space/api/v1/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: query, thread_id: threadId })
