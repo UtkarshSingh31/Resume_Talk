@@ -3,6 +3,8 @@
 temp_uploads/
 backend/checkpoints/
 *.db
+*.db-wal
+*.db-shm
 *.sqlite3
 *.pdf
 
