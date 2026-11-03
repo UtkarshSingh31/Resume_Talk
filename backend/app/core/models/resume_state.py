@@ -3,6 +3,9 @@ from typing import TypedDict, Dict, Any, List
 class ResumeState(TypedDict):
     raw_pdf_path: str
     raw_text: str
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: str
     sections: Dict[str, str]
     entities: Dict[str, Any]
     signals: Dict[str, Any]

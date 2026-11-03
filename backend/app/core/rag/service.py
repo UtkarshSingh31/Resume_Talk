@@ -16,7 +16,7 @@ class RAGSERVICE:
         if not docs:
             raise RuntimeError("No documents loaded")
 
-        full_text = "\\n".join(d.page_content for d in docs)
+        full_text = "\n".join(d.page_content for d in docs)
         self.profile = extract_profile(full_text)
 
         section_docs = sectionize_documents(docs)

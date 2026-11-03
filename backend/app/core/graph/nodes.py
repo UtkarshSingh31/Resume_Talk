@@ -8,6 +8,7 @@ from app.core.utils.pdf import extract_text_from_pdf
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from app.core.config import settings
+from app.core.utils.prompts import extract_profile
 
 # Lazy-load LLMs to avoid blocking app startup
 _llm_google = None
@@ -27,7 +28,7 @@ def get_llm_groq():
     global _llm_groq
     if _llm_groq is None:
         _llm_groq = ChatGroq(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.0,
             api_key=settings.GROQ_API_KEY
         )
@@ -35,8 +36,12 @@ def get_llm_groq():
 
 def ingest_resume(state: ResumeState):
     text = extract_text_from_pdf(state["raw_pdf_path"])
+    profile = extract_profile(text)
     return {
         "raw_text": text,
+        "candidate_name": profile.get("name") or "Candidate",
+        "candidate_email": profile.get("email") or "",
+        "candidate_phone": profile.get("phone") or "",
         "iteration": 0,
         "current_date": datetime.now().strftime("%Y-%m-%d"),
         "recommendations": [],

@@ -9,12 +9,12 @@ def extract_profile(text: str) -> Dict[str, Any]:
 
     for line in lines:
         if not email:
-            m = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}", line)
+            m = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", line)
             if m:
                 email = m.group()
 
         if not phone:
-            m = re.search(r"\\+?\\d[\\d\\s\\-]{8,}\\d", line)
+            m = re.search(r"\+?\d[\d\s\-]{8,}\d", line)
             if m:
                 phone = m.group()
 
@@ -50,7 +50,7 @@ def sectionize_documents(docs):
                 if buffer:
                     section_docs.append(
                         Document(
-                            page_content="\\n".join(buffer),
+                            page_content="\n".join(buffer),
                             metadata={**doc.metadata, "section": current_section}
                         )
                     )
@@ -62,7 +62,7 @@ def sectionize_documents(docs):
         if buffer:
             section_docs.append(
                 Document(
-                    page_content="\\n".join(buffer),
+                    page_content="\n".join(buffer),
                     metadata={**doc.metadata, "section": current_section}
                 )
             )
