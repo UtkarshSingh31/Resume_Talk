@@ -348,13 +348,19 @@ The main UI is [frontend_react/src/App.jsx](frontend_react/src/App.jsx). It cont
 - Outreach email modal
 - Resume-grounded RAG copilot
 
-The frontend uses `VITE_API_BASE_URL` when provided:
+The frontend uses `VITE_API_BASE_URL` when provided. The production fallback is the deployed Hugging Face Space:
 
 ```env
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Otherwise it defaults to `http://127.0.0.1:8000`.
+For local backend development, set `VITE_API_BASE_URL=http://127.0.0.1:8000`. If it is not set, the frontend uses:
+
+```text
+https://utkarshsingh0013-resume-talk.hf.space
+```
+
+After changing this value, rebuild and redeploy the frontend. A previously deployed static bundle will continue using its old API URL until rebuilt.
 
 The landing page also contains a visual graph simulation button. That demo is intentionally separate from the real upload flow; the real workflow starts from the PDF upload form and calls the FastAPI endpoints.
 

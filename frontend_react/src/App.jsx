@@ -124,7 +124,7 @@ const SAMPLE_PROFILES = [
   }
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://utkarshsingh0013-resume-talk.hf.space';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -324,6 +324,7 @@ export default function App() {
       };
     } catch (error) {
       setWorkflowStatus('error');
+      setCurrentPage('upload');
       setAnalysisError(error.message);
     }
   };
