@@ -3,6 +3,7 @@ from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from app.core.utils.pdf import load_documents
 from app.core.utils.prompts import extract_profile, sectionize_documents, route_query
 from app.core.rag.retriever import split_documents, create_vector_store, get_retriever
+from app.core.utils.llm import response_text
 
 class RAGSERVICE:
     def __init__(self, data_path: Path, llm_google: ChatGoogleGenerativeAI):
@@ -52,7 +53,7 @@ Answer concisely using ONLY the context.
 """.format(context=context, question=question)
 
         res = self.llm_google.invoke(prompt)
-        return res.content
+        return response_text(res)
 
     def rebuild(self):
         self.build()

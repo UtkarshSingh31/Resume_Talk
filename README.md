@@ -381,7 +381,7 @@ Provider usage:
 
 | Variable | Used by |
 |---|---|
-| `GOOGLE_API_KEY` | Gemini parsing, evaluation, final report, and RAG answers |
+| `GOOGLE_API_KEY` | Gemini 3.5 Flash-Lite parsing, evaluation, final report, and RAG answers |
 | `GROQ_API_KEY` | ATS scoring, resume refinement, and email drafting |
 | `RAPID_API_KEY` | JSearch job discovery |
 | `BASE_ROOT` | Project-relative storage paths |
@@ -389,6 +389,22 @@ Provider usage:
 | `DEBUG` | Development logging/config output |
 
 Never commit `.env`, API keys, generated databases, uploaded resumes, or model caches.
+
+### Hugging Face Spaces secrets
+
+For the deployed backend, add the variables in the Space's **Settings → Variables and secrets → Secrets** section:
+
+```text
+GOOGLE_API_KEY
+GROQ_API_KEY
+RAPID_API_KEY
+```
+
+Paste only the raw key value. Do not include surrounding quotes, backticks, spaces, or the variable name. For example, use `AIza...`, not `"AIza..."` or `GOOGLE_API_KEY=AIza...`. The backend trims whitespace and accidental surrounding quotes, but the secret should still be entered as a raw value.
+
+After changing a secret, restart or redeploy the Space so the running container receives the new environment value. The `/` endpoint only reports whether a value is present; `google_api_key_set: true` does not prove that Google accepts the key.
+
+If Gemini returns `400 API_KEY_INVALID`, the key is invalid, revoked, copied incorrectly, belongs to a different provider, or was not updated in the running Space. Create a new Gemini API key in Google AI Studio, replace the `GOOGLE_API_KEY` Space secret, restart the Space, and test again. If a key has ever been exposed in logs, screenshots, commits, or chat, revoke it and create a replacement immediately.
 
 ## Installation
 

@@ -20,7 +20,7 @@ def get_rag_service(thread_id: str):
         raise HTTPException(status_code=404, detail="Resume not found for this thread")
     
     if global_rag_service is None or str(global_rag_service.data_path) != str(pdf_files[0]):
-        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.0, api_key=settings.GOOGLE_API_KEY)
+        llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", temperature=0.0, api_key=settings.GOOGLE_API_KEY)
         global_rag_service = RAGSERVICE(pdf_files[0], llm)
         global_rag_service.build()
         

@@ -5,6 +5,12 @@ import os
 
 load_dotenv()
 
+def get_secret(name: str) -> Optional[str]:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    return value.strip().strip("\"'")
+
 def get_base_dir() -> Path:
     """Intelligently find the project root, whether running locally or from backend dir"""
     if base_root := os.getenv("BASE_ROOT"):
@@ -33,9 +39,9 @@ class Settings:
     TEMP_UPLOAD_DIR: Path = BASE_DIR / "temp_uploads"
 
     # === API Keys ===
-    GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
-    GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
-    RAPID_API_KEY: Optional[str] = os.getenv("RAPID_API_KEY")
+    GOOGLE_API_KEY: Optional[str] = get_secret("GOOGLE_API_KEY")
+    GROQ_API_KEY: Optional[str] = get_secret("GROQ_API_KEY")
+    RAPID_API_KEY: Optional[str] = get_secret("RAPID_API_KEY")
 
     # === App settings ===
     PROJECT_NAME: str = "Resume Optimizer API"

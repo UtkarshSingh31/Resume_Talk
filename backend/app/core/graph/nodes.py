@@ -9,6 +9,7 @@ from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from app.core.config import settings
 from app.core.utils.prompts import extract_profile
+from app.core.utils.llm import response_text
 
 # Lazy-load LLMs to avoid blocking app startup
 _llm_google = None
@@ -18,7 +19,7 @@ def get_llm_google():
     global _llm_google
     if _llm_google is None:
         _llm_google = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash-lite",
             temperature=0.0,
             api_key=settings.GOOGLE_API_KEY
         )
@@ -59,7 +60,7 @@ Return JSON only.
 """.format(raw_text=state.get("raw_text", ""))
     resp = get_llm_google().invoke(prompt)
     try:
-        sections = json.loads(resp.content.strip("```json\n\r "))
+        sections = json.loads(response_text(resp).strip("```json\n\r "))
     except:
         sections = {}
     return {"sections": sections}
@@ -74,7 +75,7 @@ Return JSON only.
 """.format(sections=state.get("sections", {}))
     resp = get_llm_google().invoke(prompt)
     try:
-        entities = json.loads(resp.content.strip("```json\n\r "))
+        entities = json.loads(response_text(resp).strip("```json\n\r "))
     except:
         entities = {}
     return {"entities": entities}
@@ -89,7 +90,7 @@ Return JSON only.
 """.format(entities=state.get("entities", {}), sections=state.get("sections", {}))
     resp = get_llm_google().invoke(prompt)
     try:
-        signals = json.loads(resp.content.strip("```json\n\r "))
+        signals = json.loads(response_text(resp).strip("```json\n\r "))
     except:
         signals = {}
     return {"signals": signals}
@@ -102,7 +103,7 @@ Return JSON: strengths, weaknesses, missing_elements, improvement_advice
 """.format(signals=state.get("signals", {}))
     resp = get_llm_google().invoke(prompt)
     try:
-        eval_data = json.loads(resp.content.strip("```json\n\r "))
+        eval_data = json.loads(response_text(resp).strip("```json\n\r "))
     except:
         eval_data = {}
     return {"evaluation": eval_data}
@@ -134,7 +135,7 @@ def ats_scoring(state: ResumeState):
     )
 
     resp = get_llm_groq().invoke(prompt)
-    raw = resp.content.strip()
+    raw = response_text(resp).strip()
     cleaned = re.sub(r'^(```|json|\s*)+', '', raw)
     cleaned = re.sub(r'(```|json|\s*)+$', '', cleaned)
     cleaned = cleaned.strip()
@@ -180,7 +181,7 @@ Return only the new raw_text string.
         ats_score=state.get("ats_score", 0),
         ats_breakdown=state.get("ats_breakdown", {})
     )
-    new_text = get_llm_groq().invoke(prompt).content.strip()
+    new_text = response_text(get_llm_groq().invoke(prompt)).strip()
     return {
         "raw_text": new_text,
         "iteration": iteration,
@@ -214,7 +215,7 @@ Draft short email for {job_role} at {company}.
 Subject, greeting, 2-3 sentences why fit, attach resume, closing.
 """.format(job_role=state.get('job_role', ''), company=job.get('company', 'this company'))
     resp = get_llm_groq().invoke(prompt)
-    return {"email_draft": resp.content.strip(), "emails_drafted": state.get("emails_drafted", 0) + 1}
+    return {"email_draft": response_text(resp).strip(), "emails_drafted": state.get("emails_drafted", 0) + 1}
 
 def generate_final_output(state: ResumeState):
     prompt = """
@@ -235,4 +236,4 @@ Return concise markdown report.
         email_draft=state.get("email_draft", "none")
     )
     resp = get_llm_google().invoke(prompt)
-    return {"final_output": resp.content.strip()}
+    return {"final_output": response_text(resp).strip()}
