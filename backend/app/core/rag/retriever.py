@@ -9,9 +9,8 @@ def get_embeddings():
     """Lazy initialize embeddings model on first use"""
     global _embeddings_cache
     if _embeddings_cache is None:
-        # Use TinyLM - only 20MB, 10x faster than all-MiniLM-L6-v2
         _embeddings_cache = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-TinyLM-L6-v2"
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
     return _embeddings_cache
 
@@ -19,7 +18,7 @@ def split_documents(documents):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=600,
         chunk_overlap=100,
-        separators=["\\n\\n", "\\n", " ", ""],
+        separators=["\n\n", "\n", " ", ""],
     )
     return splitter.split_documents(documents)
 
