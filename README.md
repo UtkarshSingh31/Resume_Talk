@@ -1,3 +1,12 @@
+---
+title: Resume Talk
+emoji: 📄
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # Resume Talk
 
 Resume Talk is an AI career copilot for resume analysis, ATS optimization, job discovery, outreach drafting, and resume-grounded chat.
