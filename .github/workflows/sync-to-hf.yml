@@ -1,0 +1,34 @@
+
+name: Deploy ResumeTalk Backend to Hugging Face
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitHub repository
+        uses: actions/checkout@v6
+
+      - name: Sync backend to Hugging Face
+        uses: huggingface/hub-sync@v0.3.0
+        with:
+          github_repo_id: UtkarshSingh31/Resume_Talk
+          huggingface_repo_id: utkarshsingh0013/resume_talk
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_type: space
+          space_sdk: docker
+
+          include: |
+            backend/
+            Dockerfile
+            README.md
+            pyproject.toml
+            space.yaml
+
+          delete_removed: false
