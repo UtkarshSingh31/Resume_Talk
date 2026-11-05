@@ -11,20 +11,26 @@ class ChatRequest(BaseModel):
     message: str
     thread_id: Optional[str] = None
 
-global_rag_service = None
+rag_services = {}
 
 def get_rag_service(thread_id: str):
-    global global_rag_service
     pdf_files = list(settings.TEMP_UPLOAD_DIR.glob(f"{thread_id}_*.pdf"))
     if not pdf_files:
         raise HTTPException(status_code=404, detail="Resume not found for this thread")
     
-    if global_rag_service is None or str(global_rag_service.data_path) != str(pdf_files[0]):
+    from app.api.routes.endpoints.optimize import get_compiled_app
+
+    config = {"configurable": {"thread_id": thread_id}}
+    workflow_state = get_compiled_app().get_state(config).values
+    cached = rag_services.get(thread_id)
+    if cached is None or str(cached.data_path) != str(pdf_files[0]):
         llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", temperature=0.0, api_key=settings.GOOGLE_API_KEY)
-        global_rag_service = RAGSERVICE(pdf_files[0], llm)
-        global_rag_service.build()
-        
-    return global_rag_service
+        cached = RAGSERVICE(pdf_files[0], llm, workflow_state=workflow_state)
+        cached.build()
+        rag_services[thread_id] = cached
+    else:
+        cached.workflow_state = workflow_state
+    return cached
 
 @router.post("/chat")
 async def chat_with_resume(request: ChatRequest):

@@ -1,8 +1,8 @@
 import json
 import re
-import os
 import requests
 from datetime import datetime
+from json import JSONDecodeError
 from app.core.models.resume_state import ResumeState
 from app.core.utils.pdf import extract_text_from_pdf
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
@@ -18,6 +18,8 @@ _llm_groq = None
 def get_llm_google():
     global _llm_google
     if _llm_google is None:
+        if not settings.GOOGLE_API_KEY:
+            raise RuntimeError("Google Gemini is not configured: GOOGLE_API_KEY is missing.")
         _llm_google = ChatGoogleGenerativeAI(
             model="gemini-3.5-flash-lite",
             temperature=0.0,
@@ -28,12 +30,29 @@ def get_llm_google():
 def get_llm_groq():
     global _llm_groq
     if _llm_groq is None:
+        if not settings.GROQ_API_KEY:
+            raise RuntimeError("Groq ATS scoring is not configured: GROQ_API_KEY is missing.")
         _llm_groq = ChatGroq(
             model="openai/gpt-oss-120b",
             temperature=0.0,
             api_key=settings.GROQ_API_KEY
         )
     return _llm_groq
+
+
+def parse_json_response(response, node_name: str) -> dict:
+    raw = response_text(response).strip()
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned).strip()
+    try:
+        value = json.loads(cleaned)
+    except JSONDecodeError as exc:
+        raise RuntimeError(
+            f"{node_name} returned invalid JSON at character {exc.pos}: {exc.msg}."
+        ) from exc
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{node_name} returned JSON of type {type(value).__name__}; expected an object.")
+    return value
 
 def ingest_resume(state: ResumeState):
     text = extract_text_from_pdf(state["raw_pdf_path"])
@@ -47,7 +66,9 @@ def ingest_resume(state: ResumeState):
         "current_date": datetime.now().strftime("%Y-%m-%d"),
         "recommendations": [],
         "job_openings": [],
-        "email_draft": ""
+        "email_draft": "",
+        "errors": [],
+        "warnings": []
     }
 
 def detect_sections(state: ResumeState):
@@ -59,11 +80,7 @@ Resume:
 Return JSON only.
 """.format(raw_text=state.get("raw_text", ""))
     resp = get_llm_google().invoke(prompt)
-    try:
-        sections = json.loads(response_text(resp).strip("```json\n\r "))
-    except:
-        sections = {}
-    return {"sections": sections}
+    return {"sections": parse_json_response(resp, "Section detection")}
 
 def extract_entities(state: ResumeState):
     prompt = """
@@ -74,11 +91,7 @@ Sections:
 Return JSON only.
 """.format(sections=state.get("sections", {}))
     resp = get_llm_google().invoke(prompt)
-    try:
-        entities = json.loads(response_text(resp).strip("```json\n\r "))
-    except:
-        entities = {}
-    return {"entities": entities}
+    return {"entities": parse_json_response(resp, "Entity extraction")}
 
 def infer_signals(state: ResumeState):
     prompt = """
@@ -89,11 +102,7 @@ Sections: {sections}
 Return JSON only.
 """.format(entities=state.get("entities", {}), sections=state.get("sections", {}))
     resp = get_llm_google().invoke(prompt)
-    try:
-        signals = json.loads(response_text(resp).strip("```json\n\r "))
-    except:
-        signals = {}
-    return {"signals": signals}
+    return {"signals": parse_json_response(resp, "Signal inference")}
 
 def evaluate_resume(state: ResumeState):
     prompt = """
@@ -102,11 +111,7 @@ Signals: {signals}
 Return JSON: strengths, weaknesses, missing_elements, improvement_advice
 """.format(signals=state.get("signals", {}))
     resp = get_llm_google().invoke(prompt)
-    try:
-        eval_data = json.loads(response_text(resp).strip("```json\n\r "))
-    except:
-        eval_data = {}
-    return {"evaluation": eval_data}
+    return {"evaluation": parse_json_response(resp, "Resume evaluation")}
 
 def ats_scoring(state: ResumeState):
     prompt = """
@@ -136,28 +141,20 @@ def ats_scoring(state: ResumeState):
 
     resp = get_llm_groq().invoke(prompt)
     raw = response_text(resp).strip()
-    cleaned = re.sub(r'^(```|json|\s*)+', '', raw)
-    cleaned = re.sub(r'(```|json|\s*)+$', '', cleaned)
+    cleaned = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned).strip()
     cleaned = cleaned.strip()
 
     try:
         data = json.loads(cleaned)
+        if not isinstance(data, dict):
+            raise ValueError("result must be a JSON object")
         score = int(data.get("score", 0))
         if score < 0 or score > 100:
-            score = 50
-        return {
-            "ats_score": score,
-            "ats_breakdown": data
-        }
-    except Exception as e:
-        return {
-            "ats_score": 50,
-            "ats_breakdown": {
-                "error": "JSON parse failed",
-                "raw": raw[:300],
-                "cleaned_snippet": cleaned[:200]
-            }
-        }
+            raise ValueError("score must be between 0 and 100")
+    except (JSONDecodeError, TypeError, ValueError) as exc:
+        raise RuntimeError(f"ATS scoring returned an invalid result: {exc}.") from exc
+    return {"ats_score": score, "ats_breakdown": data}
 
 def refine_resume(state: ResumeState):
     iteration = state.get("iteration", 0) + 1
@@ -197,12 +194,20 @@ def fetch_job_openings(state: ResumeState):
         "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
     }
     try:
-        r = requests.get(url, headers=headers, params=params).json()
-        jobs = r.get("data", [])[:3]
+        response = requests.get(url, headers=headers, params=params, timeout=15)
+        response.raise_for_status()
+        payload = response.json()
+        jobs = payload.get("data", [])[:3]
         formatted = [{"title": j.get("job_title"), "company": j.get("employer_name"), "link": j.get("job_apply_link")} for j in jobs]
         return {"job_openings": formatted, "jobs_fetched": True}
-    except:
-        return {"job_openings": [], "jobs_fetched": True}
+    except (requests.RequestException, ValueError) as exc:
+        message = f"Job search unavailable: {exc}"
+        return {
+            "job_openings": [],
+            "jobs_fetched": True,
+            "job_error": message,
+            "warnings": state.get("warnings", []) + [message],
+        }
 
 def draft_email(state: ResumeState):
     if state.get("ats_score", 0) < 80 or not state.get("job_openings"):

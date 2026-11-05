@@ -126,6 +126,20 @@ const SAMPLE_PROFILES = [
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://utkarshsingh0013-resume-talk.hf.space';
 
+const WORKFLOW_NODES = [
+  { id: 'ingest', name: 'Ingest', lib: 'pypdf', description: 'Extracting resume text and candidate contact details.' },
+  { id: 'sections', name: 'Sections', lib: 'Gemini', description: 'Classifying the resume into canonical sections.' },
+  { id: 'entities', name: 'Entities', lib: 'Gemini', description: 'Mapping technologies, tools, databases, and domains.' },
+  { id: 'signals', name: 'Signals', lib: 'Gemini', description: 'Inferring seniority, role fit, and measurable impact.' },
+  { id: 'evaluate', name: 'Evaluate', lib: 'Gemini', description: 'Finding strengths, weaknesses, and missing resume elements.' },
+  { id: 'ats', name: 'ATS Score', lib: 'Groq', description: 'Scoring the resume against the target role and level.' },
+  { id: 'supervisor', name: 'Supervisor', lib: 'LangGraph', description: 'Choosing the next conditional branch.' },
+  { id: 'refine_resume', name: 'Refine', lib: 'Groq', description: 'Rewriting weak content before another validation pass.' },
+  { id: 'fetch_job_openings', name: 'Jobs', lib: 'RapidAPI', description: 'Searching for relevant job openings.' },
+  { id: 'draft_email', name: 'Email', lib: 'Groq', description: 'Drafting a tailored outreach email.' },
+  { id: 'final', name: 'Final Report', lib: 'Gemini', description: 'Compiling the completed analysis report.' }
+];
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
   const [activeProfile, setActiveProfile] = useState(SAMPLE_PROFILES[0]);
@@ -292,16 +306,25 @@ export default function App() {
         const payload = JSON.parse(event.data);
         const details = payload.details || {};
         setAnalysisResults(details);
+        if (payload.node) {
+          setActiveNode(payload.node);
+          setCompletedNodes((previous) => [...new Set([...previous, payload.node])]);
+          const nodeIndex = WORKFLOW_NODES.findIndex((node) => node.id === payload.node);
+          if (nodeIndex >= 0) {
+            setProgress(Math.max(4, Math.round(((nodeIndex + 1) / WORKFLOW_NODES.length) * 92)));
+          }
+        }
         if (details.iteration) setCurrentIteration(details.iteration + 1);
-        if (details.ats_score !== undefined) setProgress(78);
         if (details.final_output) setProgress(100);
         setLogs((previous) => [
           ...previous,
           {
             time: new Date().toLocaleTimeString(),
             message: payload.status === 'error'
-              ? `[ERROR] ${payload.message}`
-              : `[${payload.status.toUpperCase()}] ${Object.keys(details).join(', ') || 'Pipeline started'}`
+              ? `[ERROR${payload.node ? ` @ ${payload.node}` : ''}] ${payload.message}`
+              : payload.node
+                ? `${payload.node_label || payload.node}: ${payload.message || 'Node completed.'}${payload.update && Object.keys(payload.update).length ? ` Updated: ${Object.keys(payload.update).join(', ')}` : ''}`
+                : `[${payload.status.toUpperCase()}] Pipeline started`
           }
         ]);
 
@@ -1053,16 +1076,8 @@ export default function App() {
             </div>
 
             {/* Topology Node Indicators */}
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
-              {[
-                { id: 'ingest', name: 'Ingest', lib: 'pypdf' },
-                { id: 'sections', name: 'Sections', lib: 'Gemini' },
-                { id: 'entities', name: 'Entities', lib: 'Gemini' },
-                { id: 'signals', name: 'Signals', lib: 'Gemini' },
-                { id: 'evaluate', name: 'Evaluate', lib: 'Gemini' },
-                { id: 'ats', name: 'ATS Score', lib: 'Groq LLaMA' },
-                { id: 'supervisor', name: 'Supervisor', lib: 'Conditional' }
-              ].map((step, idx) => {
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+              {WORKFLOW_NODES.map((step, idx) => {
                 const isDone = completedNodes.includes(step.id);
                 const isActive = activeNode === step.id;
                 return (
@@ -1078,6 +1093,7 @@ export default function App() {
                   >
                     <div className="font-mono text-[9px] text-zinc-500">{step.lib}</div>
                     <div className="font-tech text-xs font-bold mt-0.5">{step.name}</div>
+                    <div className="mt-1 text-[10px] leading-relaxed text-zinc-500">{step.description}</div>
                     <div className="mt-2 flex justify-center">
                       {isActive ? (
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-ping" />
@@ -1097,7 +1113,7 @@ export default function App() {
               <div className="flex items-center justify-between pb-3 border-b border-[#141824] text-zinc-500 text-[11px]">
                 <span className="flex items-center gap-2">
                   <Icons.Terminal />
-                  <span>SSE RAW DATA STREAM</span>
+                  <span>SSE WORKFLOW EXPLANATION STREAM</span>
                 </span>
                 <span>STATUS: {workflowStatus.toUpperCase()}</span>
               </div>
