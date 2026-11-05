@@ -254,13 +254,15 @@ GET /api/v1/stream/{thread_id}
 Accept: text/event-stream
 ```
 
-Each event is formatted as:
+Each node event is formatted as:
 
 ```text
-data: {"status":"processing","details":{...}}
+data: {"status":"processing","node":"ats","node_label":"ATS scoring","message":"Score the resume against the requested role and seniority.","update":{"ats_score":82},"details":{...}}
 ```
 
-The endpoint runs `app.stream(...)`, reads the checkpointed state after each update, and sends the current state to the browser. The final event is:
+The endpoint preserves the node name and update returned by `app.stream(...)`, reads the checkpointed state after each update, and sends both the machine-readable update and a user-facing explanation. The UI uses those fields to show the active node, what it is doing, and which state fields changed. Possible node events include `ingest`, `sections`, `entities`, `signals`, `evaluate`, `ats`, `supervisor`, `refine_resume`, `fetch_job_openings`, `draft_email`, and `final`.
+
+The final event is:
 
 ```json
 {
@@ -282,6 +284,8 @@ Errors are sent as:
   "message": "description of the failure"
 }
 ```
+
+Node/provider failures are not converted into fake empty results or a default ATS score. The stream reports the exception type, failing node when available, and message. Optional job-search failures are recorded as warnings and the workflow can still produce a report without jobs.
 
 ### 3. Resume chat
 
@@ -333,9 +337,11 @@ The RAG implementation is under `backend/app/core/rag/`:
 4. `HuggingFaceEmbeddings` creates local embeddings with `all-MiniLM-L6-v2`.
 5. FAISS indexes the chunks.
 6. The retriever returns the five nearest chunks.
-7. Gemini answers using only retrieved context.
+7. Gemini answers using retrieved resume context plus a safe projection of the completed LangGraph checkpoint.
 
 Simple profile questions such as name, email, and phone are answered from locally extracted profile data before vector retrieval.
+
+The graph and RAG service remain separate execution paths. They are joined through `thread_id`: chat locates the PDF and reads the same thread's SQLite checkpoint. RAG receives selected fields such as `ats_score`, `ats_breakdown`, `evaluation`, `recommendations`, branch iteration, jobs, and warnings; it does not receive internal paths, API keys, or the full checkpoint blindly. This allows questions such as “Why was my ATS score low?” and “Did the supervisor refine my resume?” to be grounded in the actual run.
 
 ## Frontend
 

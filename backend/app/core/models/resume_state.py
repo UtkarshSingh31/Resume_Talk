@@ -1,6 +1,6 @@
 from typing import TypedDict, Dict, Any, List
 
-class ResumeState(TypedDict):
+class ResumeState(TypedDict, total=False):
     raw_pdf_path: str
     raw_text: str
     candidate_name: str
@@ -23,3 +23,6 @@ class ResumeState(TypedDict):
     next_action: str
     jobs_fetched: bool
     emails_drafted: int
+    errors: List[dict]
+    warnings: List[str]
+    job_error: str

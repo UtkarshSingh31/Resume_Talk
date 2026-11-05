@@ -8,7 +8,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         raise FileNotFoundError(f"PDF file not found at {path}")
     reader = PdfReader(str(path))
     pages = [page.extract_text() or "" for page in reader.pages]
-    return "\\n".join(pages).strip()
+    return "\n".join(pages).strip()
 
 def load_documents(path: Path):
     if not path.exists():

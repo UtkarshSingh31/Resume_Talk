@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile, Form
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any
 import shutil
@@ -30,6 +30,21 @@ def sse_event(data_dict):
     line = "data: " + json.dumps(data_dict)
     return line + "\n\n"
 
+
+NODE_INFO = {
+    "ingest": ("Document ingestion", "Extract text from the PDF and identify the candidate profile."),
+    "sections": ("Resume section detection", "Ask Gemini to classify the resume into canonical sections."),
+    "entities": ("Entity extraction", "Map technologies, tools, databases, and domains from the sections."),
+    "signals": ("Signal inference", "Estimate seniority, role alignment, project quality, and impact strength."),
+    "evaluate": ("Resume evaluation", "Identify strengths, weaknesses, missing elements, and advice."),
+    "ats": ("ATS scoring", "Score the resume against the requested role and seniority."),
+    "supervisor": ("Supervisor routing", "Choose refinement, job discovery, outreach, or finalization."),
+    "refine_resume": ("Resume refinement", "Rewrite weak resume content before another ATS validation pass."),
+    "fetch_job_openings": ("Job discovery", "Query JSearch for role-relevant openings."),
+    "draft_email": ("Outreach drafting", "Draft a concise application email for the best matching job."),
+    "final": ("Final report", "Summarize the completed analysis into the report shown in the UI."),
+}
+
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_resume(
     file: UploadFile = File(...),
@@ -37,8 +52,10 @@ async def analyze_resume(
     job_level: str = Form(...)
 ):
     thread_id = str(uuid.uuid4())
-    
-    file_path = settings.TEMP_UPLOAD_DIR / f"{thread_id}_{file.filename}"
+    filename = Path(file.filename or "resume.pdf").name
+    if file.content_type != "application/pdf" and not filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=415, detail="Only PDF resumes are supported.")
+    file_path = settings.TEMP_UPLOAD_DIR / f"{thread_id}_{filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
@@ -74,13 +91,29 @@ async def stream_analysis(thread_id: str):
             for event in app.stream(initial_input, config, stream_mode="updates"):
                 state_snapshot = app.get_state(config)
                 val = state_snapshot.values
-                yield sse_event({"status": "processing", "details": val})
-            
+                for node_name, update in event.items():
+                    label, description = NODE_INFO.get(
+                        node_name, (node_name.replace("_", " ").title(), "Workflow node completed.")
+                    )
+                    yield sse_event({
+                        "status": "processing",
+                        "node": node_name,
+                        "node_label": label,
+                        "message": description,
+                        "update": update,
+                        "details": val,
+                    })
+
             final_snapshot = app.get_state(config)
             yield sse_event({"status": "completed", "details": final_snapshot.values})
         except Exception as e:
             import traceback
             traceback.print_exc()
-            yield sse_event({"status": "error", "message": str(e)})
+            yield sse_event({
+                "status": "error",
+                "node": locals().get("node_name"),
+                "message": str(e),
+                "error_type": type(e).__name__,
+            })
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
